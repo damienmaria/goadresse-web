@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://goadresse.fr/sitemap.xml
+
+# Disallow admin and private areas
+Disallow: /admin/
+Disallow: /api/
+Disallow: /profile/
+Disallow: /success/
+
+# Allow important pages
+Allow: /
+Allow: /search
+Allow: /pricing
+Allow: /login
+Allow: /register

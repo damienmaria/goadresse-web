@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection
+    match /users/{userId} {
+      // Only the authenticated user can read their own document
+      allow read: if request.auth != null && request.auth.uid == userId;
+      // Only the authenticated user can update their own document
+      allow update: if request.auth != null && request.auth.uid == userId;
+      // Only allow creation through the auth function
+      allow create: if false;
+      // Never allow deletion
+      allow delete: if false;
+    }
+    
+    // Parcels collection
+    match /parcels/{parcelId} {
+      // Anyone can read basic parcel data
+      allow read: if request.auth != null;
+      // Only admins can create, update, or delete
+      allow write: if false;
+      
+      // Function to check if user is pro
+      function isPro() {
+        return request.auth.token.isPro == true;
+      }
+      
+      // Restrict sensitive fields to pro users
+      match /{document=**} {
+        allow read: if request.auth != null && 
+          (isPro() || 
+          (!('adresse' in request.resource.data) && 
+           !('coordinates' in request.resource.data)));
+      }
+    }
+    
+    // Payments collection
+    match /payments/{paymentId} {
+      // Users can read their own payment data
+      allow read: if request.auth != null && 
+                 request.auth.uid == resource.data.userId;
+      // Only cloud functions can write to payments
+      allow write: if false;
+    }
+  }
+}

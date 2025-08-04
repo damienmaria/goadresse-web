@@ -1,0 +1,52 @@
+name: Check Expired Subscriptions
+
+on:
+  schedule:
+    # Exécute tous les jours à 2h00 UTC (3h00 en hiver, 4h00 en été en France)
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Permet l'exécution manuelle
+
+jobs:
+  check-expired-subscriptions:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Check expired subscriptions
+        run: |
+          echo "🔍 Vérification des abonnements expirés..."
+          
+          response=$(curl -s -w "%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/json" \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/check-expired-subscriptions")
+          
+          http_code="${response: -3}"
+          body="${response%???}"
+          
+          echo "📊 Code de réponse HTTP: $http_code"
+          echo "📋 Réponse: $body"
+          
+          if [ "$http_code" -eq 200 ]; then
+            echo "✅ Vérification des abonnements expirés réussie"
+            
+            # Extraire le nombre d'abonnements traités
+            processed=$(echo "$body" | jq -r '.processed // 0')
+            echo "📈 Abonnements expirés traités: $processed"
+            
+            if [ "$processed" -gt 0 ]; then
+              echo "⚠️ $processed abonnement(s) ont été désactivés"
+            else
+              echo "✅ Aucun abonnement expiré trouvé"
+            fi
+          else
+            echo "❌ Erreur lors de la vérification des abonnements expirés"
+            echo "📋 Détails: $body"
+            exit 1
+          fi
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "🚨 ALERTE: La vérification des abonnements expirés a échoué!"
+          echo "📧 Pensez à vérifier manuellement les abonnements expirés"
